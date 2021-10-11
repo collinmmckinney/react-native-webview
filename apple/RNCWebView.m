@@ -203,26 +203,7 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
 - (void)startLongPress:(UILongPressGestureRecognizer *)pressSender
 {
     // When a long press ends, bring up our custom UIMenu
-    if(pressSender.state == UIGestureRecognizerStateEnded) {
-      if (!self.menuItems || self.menuItems.count == 0) {
-        return;
-      }
-        UIMenuController *menuController = [UIMenuController sharedMenuController];
-        NSMutableArray *menuControllerItems = [NSMutableArray arrayWithCapacity:self.menuItems.count];
-        
-        for(NSString *menuItemName in self.menuItems) {
-            NSString *menuItemLabel = [RCTConvert NSString:menuItem[@"label"]];
-            NSString *menuItemKey = [RCTConvert NSString:menuItem[@"key"]];
-            NSString *sel = [NSString stringWithFormat:@"%@%@", CUSTOM_SELECTOR, menuItemKey];
-            UIMenuItem *item = [[UIMenuItem alloc] initWithTitle: menuItemLabel
-                                                          action: NSSelectorFromString(sel)];
-            
-            [menuControllerItems addObject: item];
-        }
-  
-        menuController.menuItems = menuControllerItems;
-        [menuController setMenuVisible:YES animated:YES];
-    }
+    RCTLogWarn(@"Long press");
 }
 
 - (void)dealloc
@@ -230,72 +211,10 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)tappedMenuItem:(NSString *)eventType
-{
-    // Get the selected text
-    // NOTE: selecting text in an iframe or shadow DOM will not work
-    [self.webView evaluateJavaScript: @"window.getSelection().toString()" completionHandler: ^(id result, NSError *error) {
-    if (error != nil) {
-      RCTLogWarn(@"%@", [NSString stringWithFormat:@"Error evaluating injectedJavaScript: This is possibly due to an unsupported return type. Try adding true to the end of your injectedJavaScript string. %@", error]);
-    } else {
-      if (self.onCustomMenuSelection) {
-        NSPredicate *filter = [NSPredicate predicateWithFormat:@"key contains[c] %@ ",eventType];
-        NSArray *filteredMenuItems = [self.menuItems filteredArrayUsingPredicate:filter];
-        NSDictionary *selectedMenuItem = filteredMenuItems[0];
-        NSString *label = [RCTConvert NSString:selectedMenuItem[@"label"]];
-        self.onCustomMenuSelection(@{
-            @"key": eventType,
-            @"label": label,
-            @"selectedText": result
-        });
-      } else {
-        RCTLogWarn(@"Error evaluating onCustomMenuSelection: You must implement an `onCustomMenuSelection` callback when using custom menu items");
-      }
-    }
-  }];
-}
-
-// Overwrite method that interprets which action to call upon UIMenu Selection
-// https://developer.apple.com/documentation/objectivec/nsobject/1571960-methodsignatureforselector
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel
-{
-    NSMethodSignature *existingSelector = [super methodSignatureForSelector:sel];
-    if (existingSelector) {
-        return existingSelector;
-    }
-    return [super methodSignatureForSelector:@selector(tappedMenuItem:)];
-}
-
-// Needed to forward messages to other objects
-// https://developer.apple.com/documentation/objectivec/nsobject/1571955-forwardinvocation
-- (void)forwardInvocation:(NSInvocation *)invocation
-{
-    NSString *sel = NSStringFromSelector([invocation selector]);
-    NSRange match = [sel rangeOfString:CUSTOM_SELECTOR];
-    if (match.location == 0) {
-        [self tappedMenuItem:[sel substringFromIndex:17]];
-    } else {
-        [super forwardInvocation:invocation];
-    }
-}
-
 // Allows the instance to respond to UIMenuController Actions
 - (BOOL)canBecomeFirstResponder
 {
     return YES;
-}
-
-// Control which items show up on the UIMenuController
-- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
-{
-    NSString *sel = NSStringFromSelector(action);
-    // Do any of them have our custom keys?
-    NSRange match = [sel rangeOfString:CUSTOM_SELECTOR];
-
-    if (match.location == 0) {
-        return YES;
-    }
-    return NO;
 }
 
 /**
@@ -435,15 +354,13 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
   }
 
   // Allow this object to recognize gestures
-  if (self.menuItems != nil) {
-    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startLongPress:)];
-    longPress.delegate = self;
+  UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startLongPress:)];
+  longPress.delegate = self;
 
-    longPress.minimumPressDuration = 0.4f;
-    longPress.numberOfTouchesRequired = 1;
-    longPress.cancelsTouchesInView = YES;
-    [self addGestureRecognizer:longPress];
-  }
+  longPress.minimumPressDuration = 0.4f;
+  longPress.numberOfTouchesRequired = 1;
+  longPress.cancelsTouchesInView = YES;
+  [self addGestureRecognizer:longPress];
 }
 
 // Update webview property when the component prop changes.
