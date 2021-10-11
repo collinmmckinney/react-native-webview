@@ -357,9 +357,25 @@ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
   UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startLongPress:)];
   longPress.delegate = self;
 
-  longPress.minimumPressDuration = 0.4f;
+  longPress.minimumPressDuration = 0.45f;
   longPress.numberOfTouchesRequired = 1;
   longPress.cancelsTouchesInView = YES;
+    
+  NSArray *views = _webView.subviews;
+  if (views.count == 0) {
+    RCTLogWarn(@"No subviews found.");
+    return;
+  }
+  for (int i=0; i<views.count; i++) {
+    UIView *webViewScrollView = views[i];
+    if ([webViewScrollView isKindOfClass:[UIScrollView class]]) {
+      NSArray *webViewScrollViewSubViews = webViewScrollView.subviews;
+      UIView *browser = webViewScrollViewSubViews[0];
+      [browser addGestureRecognizer:longPress];
+      RCTLogWarn(@"Applied fix.");
+      break;
+    }
+  }
   [self addGestureRecognizer:longPress];
 }
 
